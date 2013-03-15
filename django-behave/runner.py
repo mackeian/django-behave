@@ -4,9 +4,10 @@
 import unittest
 from pdb import set_trace
 from os.path import dirname, abspath, join, isdir
+from os import walk
 
 from django.test.simple import DjangoTestSuiteRunner, reorder_suite
-from django.test import LiveServerTestCase
+from django.test import LiveServerTestCase, TestCase
 from django.db.models import get_app
 
 import behave
@@ -21,11 +22,19 @@ def get_features(app_module):
     app_dir = dirname(app_module.__file__)
     features_dir = abspath(join(app_dir, 'features'))
     if isdir(features_dir):
-        return features_dir
+        feature_files = []
+        for dirpath, dirnames, filenames in walk(features_dir):
+            for filename in filenames:
+                if filename.endswith('.feature'):
+                    feature_files.append(join(dirpath, filename))
+        return features_dir, feature_files
     else:
-        return None
+        return None, None
 
-class DjangoBehaveTestCase(LiveServerTestCase):
+class DjangoBehaveTestCase(TestCase):
+    """ Inherit from TestCase to get transaction support (and faster tests without setup/teardown of DB between every
+     testcase.
+     Inherit from LiveServerTestCase if you need other thread accessing (like full stack testing with Selenium)"""
     def __init__(self, features_dir):
         unittest.TestCase.__init__(self)
         self.features_dir = features_dir
@@ -83,10 +92,27 @@ class DjangoBehaveTestCase(LiveServerTestCase):
             sys.stderr.write(escapes['undefined'] + msg + escapes['reset'])
             sys.stderr.flush()
 
-        self.assertFalse(failed)
-        
+        if failed:
+            sys.exit(1)
+            # end of from behave/__main__.py
+
+class DjangoBehaveFeatureTestCase(DjangoBehaveTestCase):
+    """ Test case that only runs one feature, to avoid database interference between features in same app
+    Inherit from django TestCase with transactions gives be smoother and fast, but that does not work with
+    external drivers like Selenium etc because of different threads. Only works with djangos own test Client.
+    """
+    def __init__(self, features_dir, feature_file):
+        super(DjangoBehaveFeatureTestCase, self).__init__(features_dir)
+
+        # Only include this feature file
+        import re
+        self.behave_config.include_re = re.compile('%s$' % feature_file)
+
 def make_test_suite(features_dir):
     return DjangoBehaveTestCase(features_dir=features_dir)
+
+def make_feature_test_suite(features_dir, feature_file):
+    return DjangoBehaveFeatureTestCase(features_dir, feature_file)
 
 class DjangoBehave_Runner(DjangoTestSuiteRunner):
     def build_suite(self, test_labels, extra_tests=None, **kwargs):
@@ -98,28 +124,22 @@ class DjangoBehave_Runner(DjangoTestSuiteRunner):
         # TEMP: for now, ignore any tests but feature tests
         # This will become an option
         #
-        #suite = unittest.TestSuite()
-        suite = super(DjangoBehave_Runner, self).build_suite(test_labels, extra_tests, **kwargs)
-        
-        #
-        # Add any BDD tests to it
-        #
-
+        suite = unittest.TestSuite()
         # always get all features for given apps (for convenience)
         for label in test_labels:
             if '.' in label:
                 print "Ignoring label with dot in: " % label
                 continue
             app = get_app(label)
-            
+
             # Check to see if a separate 'features' module exists,
             # parallel to the models module
-            features_dir = get_features(app)
+            features_dir, feature_files = get_features(app)
             if features_dir is not None:
-                # build a test suite for this directory
-                features_test_suite = make_test_suite(features_dir)
-                suite.addTest(features_test_suite)
-
-        return reorder_suite(suite, (LiveServerTestCase,))
+                for feature_file in feature_files:
+                    # build a test suite for this feature
+                    features_test_suite = make_feature_test_suite(features_dir, feature_file)
+                    suite.addTest(features_test_suite)
+        return reorder_suite(suite, (TestCase,))
 
 # eof:
