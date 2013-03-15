@@ -15,8 +15,7 @@ from behave.runner import Runner
 from behave.parser import ParserError
 from behave.formatter.ansi_escapes import escapes
 
-from selenium import webdriver
-
+from django_webtest import WebTest
 import sys
 
 
@@ -33,8 +32,14 @@ def get_features(app_module):
     else:
         return None, None
 
-class DjangoBehaveTestCase(TestCase):
-    """ Inherit from TestCase to get transaction support (and faster tests without setup/teardown of DB between every
+class DjangoBehaveWebTestApp():
+    """ Static variable holding the WebTestApp https://bitbucket.org/kmike/django-webtest/
+    that can be used inside Django Transactional TestCases"""
+    app = None
+
+
+class DjangoBehaveTestCase(WebTest):
+    """ Inheriting from WebTest(TestCase) to get transaction support (and faster tests without setup/teardown of DB between every
      testcase.
      Inherit from LiveServerTestCase if you need other thread accessing (like full stack testing with Selenium)"""
 
@@ -42,17 +47,12 @@ class DjangoBehaveTestCase(TestCase):
         self.features_dir = kwargs.pop('features_dir')
         super(DjangoBehaveTestCase, self).__init__(**kwargs)
         unittest.TestCase.__init__(self)
+        self.setupBehave()
 
     def get_features_dir(self):
         if isinstance(self.features_dir, basestring):
             return [self.features_dir]
         return self.features_dir
-
-    def get_browser(self):
-        return webdriver.Firefox()
-
-    def setUp(self):
-        self.setupBehave()
 
     def setupBehave(self):
         # sys.argv kludge
@@ -65,8 +65,8 @@ class DjangoBehaveTestCase(TestCase):
         sys.argv = old_argv
         # end of sys.argv kludge
 
-        self.behave_config.server_url = self.live_server_url # property of LiveServerTestCase
-        self.behave_config.browser = self.get_browser()
+        #self.behave_config.server_url = self.live_server_url # property of LiveServerTestCase
+        #self.behave_config.browser = self.get_browser()
         self.behave_config.paths = self.get_features_dir()
         self.behave_config.format = ['pretty']
         # disable these in case you want to add set_trace in the tests you're developing
@@ -74,8 +74,12 @@ class DjangoBehaveTestCase(TestCase):
         self.behave_config.stderr_capture = False
 
     def runTest(self, result=None):
+        # Setting the WebTestApp so it's accessible from e.g. behave steps
+        DjangoBehaveWebTestApp.app = self.app
+
         # run behave on a single directory
         print "run: features_dir=%s" % (self.features_dir)
+
 
         # from behave/__main__.py
         stream = self.behave_config.output
@@ -119,7 +123,7 @@ class DjangoBehaveFeatureTestCase(DjangoBehaveTestCase):
     external drivers like Selenium etc because of different threads. Only works with djangos own test Client.
     """
     def __init__(self, features_dir, feature_file):
-        super(DjangoBehaveFeatureTestCase, self).__init__(features_dir)
+        super(DjangoBehaveFeatureTestCase, self).__init__(features_dir=features_dir)
 
         # Only include this feature file
         import re
@@ -131,15 +135,7 @@ def make_test_suite(features_dir):
 def make_feature_test_suite(features_dir, feature_file):
     return DjangoBehaveFeatureTestCase(features_dir, feature_file)
 
-class DjangoBehave_Runner(DjangoTestSuiteRunner):
-    def build_suite(self, test_labels, extra_tests=None, **kwargs):
-
-
-
 class DjangoBehaveTestSuiteRunner(DjangoTestSuiteRunner):
-    def make_bdd_test_suite(self, features_dir):
-        return DjangoBehaveTestCase(features_dir=features_dir)
-
     def build_suite(self, test_labels, extra_tests=None, **kwargs):
         # build standard Django test suite
         suite = unittest.TestSuite()
@@ -163,6 +159,6 @@ class DjangoBehaveTestSuiteRunner(DjangoTestSuiteRunner):
                     # build a test suite for this feature
                     features_test_suite = make_feature_test_suite(features_dir, feature_file)
                     suite.addTest(features_test_suite)
-        return reorder_suite(suite, (TestCase,))
+        return reorder_suite(suite, (WebTest,))
 
 # eof:

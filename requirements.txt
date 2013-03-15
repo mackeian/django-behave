@@ -1,4 +1,5 @@
 Django>=1.4
-selenium
 parse
 behave
+webtest
+django-webtest
