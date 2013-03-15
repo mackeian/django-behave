@@ -10,13 +10,15 @@ from django.test.simple import DjangoTestSuiteRunner, reorder_suite
 from django.test import LiveServerTestCase, TestCase
 from django.db.models import get_app
 
-import behave
 from behave.configuration import Configuration, ConfigError
 from behave.runner import Runner
 from behave.parser import ParserError
 from behave.formatter.ansi_escapes import escapes
 
+from selenium import webdriver
+
 import sys
+
 
 def get_features(app_module):
     app_dir = dirname(app_module.__file__)
@@ -35,9 +37,24 @@ class DjangoBehaveTestCase(TestCase):
     """ Inherit from TestCase to get transaction support (and faster tests without setup/teardown of DB between every
      testcase.
      Inherit from LiveServerTestCase if you need other thread accessing (like full stack testing with Selenium)"""
-    def __init__(self, features_dir):
+
+    def __init__(self, **kwargs):
+        self.features_dir = kwargs.pop('features_dir')
+        super(DjangoBehaveTestCase, self).__init__(**kwargs)
         unittest.TestCase.__init__(self)
-        self.features_dir = features_dir
+
+    def get_features_dir(self):
+        if isinstance(self.features_dir, basestring):
+            return [self.features_dir]
+        return self.features_dir
+
+    def get_browser(self):
+        return webdriver.Firefox()
+
+    def setUp(self):
+        self.setupBehave()
+
+    def setupBehave(self):
         # sys.argv kludge
         # need to understand how to do this better
         # temporarily lose all the options etc
@@ -47,11 +64,11 @@ class DjangoBehaveTestCase(TestCase):
         self.behave_config = Configuration()
         sys.argv = old_argv
         # end of sys.argv kludge
-        self.behave_config.paths = [features_dir]
+
+        self.behave_config.server_url = self.live_server_url # property of LiveServerTestCase
+        self.behave_config.browser = self.get_browser()
+        self.behave_config.paths = self.get_features_dir()
         self.behave_config.format = ['pretty']
-
-        self.behave_config.server_url = 'http://localhost:8081'
-
         # disable these in case you want to add set_trace in the tests you're developing
         self.behave_config.stdout_capture = False
         self.behave_config.stderr_capture = False
@@ -117,14 +134,20 @@ def make_feature_test_suite(features_dir, feature_file):
 class DjangoBehave_Runner(DjangoTestSuiteRunner):
     def build_suite(self, test_labels, extra_tests=None, **kwargs):
 
+
+
+class DjangoBehaveTestSuiteRunner(DjangoTestSuiteRunner):
+    def make_bdd_test_suite(self, features_dir):
+        return DjangoBehaveTestCase(features_dir=features_dir)
+
+    def build_suite(self, test_labels, extra_tests=None, **kwargs):
         # build standard Django test suite
-        #suite = DjangoTestSuiteRunner.build_suite(self, test_labels, extra_tests, **kwargs)
+        suite = unittest.TestSuite()
 
         #
-        # TEMP: for now, ignore any tests but feature tests
-        # This will become an option
+        # Add BDD tests to it
         #
-        suite = unittest.TestSuite()
+
         # always get all features for given apps (for convenience)
         for label in test_labels:
             if '.' in label:
