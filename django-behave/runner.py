@@ -104,8 +104,8 @@ class DjangoBehave_Runner(DjangoTestSuiteRunner):
         # TEMP: for now, ignore any tests but feature tests
         # This will become an option
         #
-        #suite = unittest.TestSuite()
-        suite = super(DjangoBehave_Runner, self).build_suite(test_labels, extra_tests, **kwargs)
+        suite = unittest.TestSuite()
+        #suite = super(DjangoBehave_Runner, self).build_suite(test_labels, extra_tests, **kwargs)
         
         #
         # Add any BDD tests to it
