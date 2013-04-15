@@ -25,9 +25,13 @@ def get_features(app_module):
     else:
         return None
 
+class DjangoTestCaseAccessor():
+    test_case = None
+
+
 class DjangoBehaveTestCase(LiveServerTestCase):
     def __init__(self, features_dir):
-        unittest.TestCase.__init__(self)
+        super(DjangoBehaveTestCase, self).__init__()
         self.features_dir = features_dir
         # sys.argv kludge
         # need to understand how to do this better
@@ -41,11 +45,13 @@ class DjangoBehaveTestCase(LiveServerTestCase):
         self.behave_config.paths = [features_dir]
         self.behave_config.format = ['pretty']
 
-        self.behave_config.server_url = 'http://localhost:8081'
+        self.behave_config.server_url =  'http://localhost:8081'
 
         # disable these in case you want to add set_trace in the tests you're developing
         self.behave_config.stdout_capture = False
         self.behave_config.stderr_capture = False
+
+        DjangoTestCaseAccessor.test_case = self
 
     def runTest(self, result=None):
         # run behave on a single directory
