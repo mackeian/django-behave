@@ -5,9 +5,11 @@ import unittest
 from pdb import set_trace
 from os.path import dirname, abspath, join, isdir
 
+from django.conf import settings
+from django.db.models import get_app
 from django.test.simple import DjangoTestSuiteRunner, reorder_suite
 from django.test import LiveServerTestCase
-from django.db.models import get_app
+
 
 import behave
 from behave.configuration import Configuration, ConfigError
@@ -39,6 +41,11 @@ class DjangoBehaveTestCase(LiveServerTestCase):
         # else behave will complain
         old_argv = sys.argv
         sys.argv = old_argv[:2]
+
+        # Append settings
+        if getattr(settings, 'DJANGO_BEHAVE_JUNIT', False):
+            sys.argv.append('--junit')
+
         self.behave_config = Configuration()
         sys.argv = old_argv
         # end of sys.argv kludge
@@ -48,8 +55,8 @@ class DjangoBehaveTestCase(LiveServerTestCase):
         self.behave_config.server_url =  'http://localhost:8081'
 
         # disable these in case you want to add set_trace in the tests you're developing
-        self.behave_config.stdout_capture = False
-        self.behave_config.stderr_capture = False
+        #self.behave_config.stdout_capture = False
+        #self.behave_config.stderr_capture = False
 
         DjangoTestCaseAccessor.test_case = self
 
