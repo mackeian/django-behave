@@ -65,7 +65,6 @@ class DjangoBehaveTestCase(LiveServerTestCase):
         print "run: features_dir=%s" % (self.features_dir)
 
         # from behave/__main__.py
-        stream = self.behave_config.output
         runner = Runner(self.behave_config)
         try:
             failed = runner.run()
