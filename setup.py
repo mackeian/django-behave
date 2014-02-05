@@ -15,4 +15,9 @@ setup(
                 'License :: OSI Approved :: Apache Software License',
                 'Topic :: Software Development :: Testing',
 	],
+    install_requires=[
+        'selenium',
+        'parse',
+        'behave'
+    ],
 )

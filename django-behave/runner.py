@@ -21,11 +21,12 @@ import sys
 
 def get_features(app_module):
     app_dir = dirname(app_module.__file__)
-    features_dir = abspath(join(app_dir, 'features'))
+    features_dir = abspath(join(app_dir, 'tests/features'))
     if isdir(features_dir):
         return features_dir
     else:
         return None
+
 
 class DjangoTestCaseAccessor():
     test_case = None
@@ -96,26 +97,16 @@ class DjangoBehaveTestCase(LiveServerTestCase):
             sys.stderr.flush()
 
         self.assertFalse(failed)
-        
+
+
 def make_test_suite(features_dir):
     return DjangoBehaveTestCase(features_dir=features_dir)
+
 
 class DjangoBehave_Runner(DjangoTestSuiteRunner):
     def build_suite(self, test_labels, extra_tests=None, **kwargs):
 
-        # build standard Django test suite
-        #suite = DjangoTestSuiteRunner.build_suite(self, test_labels, extra_tests, **kwargs)
-
-        #
-        # TEMP: for now, ignore any tests but feature tests
-        # This will become an option
-        #
         suite = unittest.TestSuite()
-        #suite = super(DjangoBehave_Runner, self).build_suite(test_labels, extra_tests, **kwargs)
-        
-        #
-        # Add any BDD tests to it
-        #
 
         # always get all features for given apps (for convenience)
         for label in test_labels:
