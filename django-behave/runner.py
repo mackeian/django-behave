@@ -19,13 +19,12 @@ from behave.formatter.ansi_escapes import escapes
 
 import sys
 
-def get_features(app_module):
+def get_feature_paths(app_module, feature_name):
     app_dir = dirname(app_module.__file__)
-    features_dir = abspath(join(app_dir, 'tests/features'))
-    if isdir(features_dir):
-        return features_dir
-    else:
-        return None
+    features_path = abspath(join(app_dir, 'tests/features'))
+    if feature_name:
+        features_path = join(features_path, feature_name + '.feature')
+    return features_path
 
 
 class DjangoTestCaseAccessor():
@@ -105,22 +104,24 @@ def make_test_suite(features_dir):
 
 class DjangoBehave_Runner(DjangoTestSuiteRunner):
     def build_suite(self, test_labels, extra_tests=None, **kwargs):
-
         suite = unittest.TestSuite()
-
         # always get all features for given apps (for convenience)
         for label in test_labels:
+            print label
             if '.' in label:
-                print "Ignoring label with dot in: " % label
-                continue
+                parts = label.split('.')
+                label = parts[0]
+                feature_name = parts[1]
+            else:
+                feature_name = None
             app = get_app(label)
             
             # Check to see if a separate 'features' module exists,
             # parallel to the models module
-            features_dir = get_features(app)
-            if features_dir is not None:
+            feature_paths = get_feature_paths(app, feature_name)
+            if feature_paths is not None:
                 # build a test suite for this directory
-                features_test_suite = make_test_suite(features_dir)
+                features_test_suite = make_test_suite(feature_paths)
                 suite.addTest(features_test_suite)
 
         return reorder_suite(suite, (LiveServerTestCase,))
