@@ -2,8 +2,8 @@
 """
 
 import unittest
-from pdb import set_trace
-from os.path import dirname, abspath, join, isdir
+import glob
+from os.path import dirname, abspath, join
 
 from django.conf import settings
 from django.db.models import get_app
@@ -21,10 +21,15 @@ import sys
 
 def get_feature_paths(app_module, feature_name):
     app_dir = dirname(app_module.__file__)
-    features_path = abspath(join(app_dir, 'tests/features'))
+    path_to_features = abspath(join(app_dir, 'tests/features'))
     if feature_name:
-        features_path = join(features_path, feature_name + '.feature')
-    return features_path
+        # Return only that specific feature
+        feature_paths = [join(path_to_features, feature_name + '.feature')]
+    else:
+        # Return all feature files (so each file can be run in an own transactionTestCase)
+        feature_paths = glob.glob(path_to_features + '/*.feature')
+
+    return feature_paths
 
 
 class DjangoTestCaseAccessor():
@@ -32,9 +37,12 @@ class DjangoTestCaseAccessor():
 
 
 class DjangoBehaveTestCase(LiveServerTestCase):
-    def __init__(self, features_dir):
+    def __init__(self, features_dir=None, feature_paths=None):
         super(DjangoBehaveTestCase, self).__init__()
-        self.features_dir = features_dir
+        if features_dir:
+            self.feature_paths = [features_dir]
+        else:
+            self.feature_paths = feature_paths
         # sys.argv kludge
         # need to understand how to do this better
         # temporarily lose all the options etc
@@ -49,7 +57,7 @@ class DjangoBehaveTestCase(LiveServerTestCase):
         self.behave_config = Configuration()
         sys.argv = old_argv
         # end of sys.argv kludge
-        self.behave_config.paths = [features_dir]
+        self.behave_config.paths = self.feature_paths
         self.behave_config.format = ['pretty']
 
         self.behave_config.server_url =  'http://localhost:8081'
@@ -62,7 +70,7 @@ class DjangoBehaveTestCase(LiveServerTestCase):
 
     def runTest(self, result=None):
         # run behave on a single directory
-        print "run: features_dir=%s" % (self.features_dir)
+        print "Run test in transaction for feature_paths=%s" % self.feature_paths
 
         # from behave/__main__.py
         runner = Runner(self.behave_config)
@@ -101,6 +109,9 @@ class DjangoBehaveTestCase(LiveServerTestCase):
 def make_test_suite(features_dir):
     return DjangoBehaveTestCase(features_dir=features_dir)
 
+def make_test_suite_from_paths(feature_paths):
+    return DjangoBehaveTestCase(feature_paths=feature_paths)
+
 
 class DjangoBehave_Runner(DjangoTestSuiteRunner):
     def build_suite(self, test_labels, extra_tests=None, **kwargs):
@@ -119,9 +130,9 @@ class DjangoBehave_Runner(DjangoTestSuiteRunner):
             # Check to see if a separate 'features' module exists,
             # parallel to the models module
             feature_paths = get_feature_paths(app, feature_name)
-            if feature_paths is not None:
-                # build a test suite for this directory
-                features_test_suite = make_test_suite(feature_paths)
+            for feature_path in feature_paths:
+                # build a test suite for each feature path, to let them run in separate transactions
+                features_test_suite = make_test_suite(feature_path)
                 suite.addTest(features_test_suite)
 
         return reorder_suite(suite, (LiveServerTestCase,))
