@@ -81,7 +81,7 @@ class DjangoBehaveTestCase(LiveServerTestCase):
         except ConfigError, e:
             sys.exit(str(e))
 
-        if self.behave_config.show_snippets and runner.undefined:
+        if self.behave_config.show_snippets and hasattr(runner, 'undefined') and runner.undefined:
             msg = u"\nYou can implement step definitions for undefined steps with "
             msg += u"these snippets:\n\n"
             printed = set()
