@@ -1,2 +1,3 @@
 ve-behave
 *.pyc
+*.egg-info
