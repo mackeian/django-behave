@@ -16,7 +16,7 @@ setup(
                 'Topic :: Software Development :: Testing',
 	],
     install_requires=[
-        'selenium',
+        'selenium==2.40.0',
         'parse',
         'behave'
     ],
