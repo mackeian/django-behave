@@ -7,7 +7,8 @@ from os.path import dirname, abspath, join
 
 from django.conf import settings
 from django.db.models import get_app
-from django.test.simple import DjangoTestSuiteRunner, reorder_suite
+from django.test.simple import DjangoTestSuiteRunner
+from django.test.runner import reorder_suite
 from django.test import LiveServerTestCase
 
 
