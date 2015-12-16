@@ -67,9 +67,8 @@ class DjangoBehaveTestCase(LiveServerTestCase):
         #self.behave_config.stdout_capture = False
         #self.behave_config.stderr_capture = False
 
-        DjangoTestCaseAccessor.test_case = self
-
     def runTest(self, result=None):
+        DjangoTestCaseAccessor.test_case = self
         # run behave on a single directory
         print "Run test in transaction for feature_paths=%s" % self.feature_paths
 
