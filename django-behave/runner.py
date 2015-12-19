@@ -7,7 +7,8 @@ from os.path import dirname, abspath, join
 
 from django.conf import settings
 from django.db.models import get_app
-from django.test.simple import DjangoTestSuiteRunner
+#from django.test.simple import DjangoTestSuiteRunner
+from django.test.runner import DiscoverRunner
 from django.test.runner import reorder_suite
 from django.test import LiveServerTestCase
 
@@ -113,7 +114,7 @@ def make_test_suite_from_paths(feature_paths):
     return DjangoBehaveTestCase(feature_paths=feature_paths)
 
 
-class DjangoBehave_Runner(DjangoTestSuiteRunner):
+class DjangoBehave_Runner(DiscoverRunner):
     def build_suite(self, test_labels, extra_tests=None, **kwargs):
         suite = unittest.TestSuite()
         # always get all features for given apps (for convenience)
