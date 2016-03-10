@@ -136,6 +136,6 @@ class DjangoBehave_Runner(DiscoverRunner):
                 features_test_suite = make_test_suite(feature_path)
                 suite.addTest(features_test_suite)
 
-        return reorder_suite(suite, (LiveServerTestCase,))
+        return suite
 
 # eof:
