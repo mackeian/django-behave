@@ -6,10 +6,10 @@ import glob
 from os.path import dirname, abspath, join
 
 from django.conf import settings
-from django.db.models import get_app
-#from django.test.simple import DjangoTestSuiteRunner
+#from django.db.models import get_app
+from django.apps import apps
+
 from django.test.runner import DiscoverRunner
-from django.test.runner import reorder_suite
 from django.test import LiveServerTestCase
 
 
@@ -126,7 +126,7 @@ class DjangoBehave_Runner(DiscoverRunner):
                 feature_name = parts[1]
             else:
                 feature_name = None
-            app = get_app(label)
+            app = apps.get_app_config(label).models_module
             
             # Check to see if a separate 'features' module exists,
             # parallel to the models module
